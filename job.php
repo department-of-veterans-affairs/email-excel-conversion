@@ -1,11 +1,43 @@
 <?php
- 
 set_time_limit(3000); 
 ini_set('display_errors', true);
 ini_set('auto_detect_line_endings', true);
 
-$Master_Email = "[Enter Your Email";
-$Master_Password = "[Enter Your Password]";
+$Site_URL = "http://example.com/"; // The URL you are running your code
+$Master_Email = "[Enter Your Email"; // Your email address
+$Master_Password = "[Enter Your Password]"; // Your email password
+
+
+function sendEmail($Master_Email,$Master_Password,$To_Email,$To_Name,$From_Email,$From_Name,$Subject,$Body)
+	{
+		
+	$mail  = new PHPMailer();
+	$mail->IsSMTP();
+	 
+	//GMAIL config
+		$mail->SMTPAuth   = true;                  // enable SMTP authentication
+		$mail->SMTPSecure = "ssl";                 // sets the prefix to the server
+		$mail->Host       = "smtp.gmail.com";      // sets GMAIL as the SMTP server
+		$mail->Port       = 465;                   // set the SMTP port for the GMAIL server
+		$mail->Username   = $Master_Email;  // GMAIL username
+		$mail->Password   = $Master_Password;            // GMAIL password
+	//End Gmail
+
+	$mail->From       = $From_Email;
+	$mail->FromName   = $From_Name;
+	$mail->Subject    = $Subject;
+	$mail->MsgHTML($Body);
+	 
+	$mail->AddAddress($To_Email,$To_Name);
+	$mail->IsHTML(true);
+	 
+	if(!$mail->Send()) {
+	  //echo "Mailer Error: " . $mail->ErrorInfo;
+		} else  {
+			echo "Message sent!";
+		}
+	
+	}
 
 function PrepareXMLName($PrepareString)
 	{
@@ -199,12 +231,12 @@ if($emails) {
 			$ExcelFileName = $filename;
 			$ExcelFileName = str_replace("excel/","",$filename);
 			
-			echo "Seen: " . $Seen . "<br />";
-			echo "Subject: " . $Subject . "<br />";
-			echo "Name: " . $From_Name . "<br />";
-			echo "Email: " . $From_Email . "<br />";
-			echo "Date: " . $Email_Date . "<br />";		
-			echo "FileName: " . $filename . "<br />";	
+			//echo "Seen: " . $Seen . "<br />";
+			//echo "Subject: " . $Subject . "<br />";
+			//echo "Name: " . $From_Name . "<br />";
+			//echo "Email: " . $From_Email . "<br />";
+			//echo "Date: " . $Email_Date . "<br />";		
+			//echo "FileName: " . $filename . "<br />";	
 			
 			$ManifestEntry = array();
 			$ManifestEntry['name'] = $From_Name;
@@ -226,34 +258,13 @@ if($emails) {
 			// Go ahead and delete we have everything we need if next process is killed
 			imap_delete($inbox, $email_number);	
 			
-			//Send Email
-			$mail  = new PHPMailer();
-			$mail->IsSMTP();
-			 
-			//GMAIL config
-				$mail->SMTPAuth   = true;                  // enable SMTP authentication
-				$mail->SMTPSecure = "ssl";                 // sets the prefix to the server
-				$mail->Host       = "smtp.gmail.com";      // sets GMAIL as the SMTP server
-				$mail->Port       = 465;                   // set the SMTP port for the GMAIL server
-				$mail->Username   = $Master_Email;  // GMAIL username
-				$mail->Password   = $Master_Password;            // GMAIL password
-			//End Gmail
-			
+			// Send process notification
+			$To_Email = $From_Email;
+			$To_Name = $From_Name;
+			$From_Name = "Conversion - Processing";
+			$Subject = "The Excel File (" . $ExcelFileName . ") Is Being Processed";
 			$Body = $ExcelFileName . ' is being processed, if its not too large you will receive links in a few minutes, if it was too large or had errors it will be processed as part of nightly queue, and you will receive email when done.';
-	 		 
-			$mail->From       = "$Master_Email";
-			$mail->FromName   = "Conversion - Processing";
-			$mail->Subject    = "The Excel File (" . $ExcelFileName . ") Is Being Processed";
-			$mail->MsgHTML($Body);
-			 
-				//$mail->AddReplyTo("reply@email.com","reply name");//they answer here, optional
-			$mail->AddAddress($From_Email,$From_Name);
-			$mail->IsHTML(true); // send as HTML
-			 
-			if(!$mail->Send()) {//to see if we return a message or a value bolean
-			  echo "Mailer Error: " . $mail->ErrorInfo;
-			} else  echo "Message sent!";		
-							
+			sendEmail($Master_Email,$Master_Password,$To_Email,$To_Name,$Master_Email,$From_Name,$Subject,$Body);				
 					
 			// Generate CSV
 			$CSVFileName = str_replace(".xlsx",".csv",$filename);
@@ -330,36 +341,18 @@ if($emails) {
 		    $fp = fopen($XMLFileName, "w+");				
 		    fwrite($fp, $XMLVersion);
 		    fclose($fp);	
+	
+			// Send conversion notification
+			$To_Email = $From_Email;
+			$To_Name = $From_Name;
+			$From_Name = "Conversion - Processing";
+			$Subject = "The Excel File (" . $ExcelFileName . ") Has Been Converted";
 			
-			//Send Email
-			$mail  = new PHPMailer();
-			$mail->IsSMTP();
-			 
-			//GMAIL config
-				$mail->SMTPAuth   = true;                  // enable SMTP authentication
-				$mail->SMTPSecure = "ssl";                 // sets the prefix to the server
-				$mail->Host       = "smtp.gmail.com";      // sets GMAIL as the SMTP server
-				$mail->Port       = 465;                   // set the SMTP port for the GMAIL server
-				$mail->Username   = $Master_Email;  // GMAIL username
-				$mail->Password   = $Master_Password;            // GMAIL password
-			//End Gmail
+			$Body = '<a href="' . $Site_URL . $CSVFileName . '">CSV File</a><br />';
+			$Body .= '<a href="' . $Site_URL . $JSONFileName . '">JSON File</a><br />';
+			$Body .= '<a href="' . $Site_URL . $XMLFileName . '">XML File</a><br />';			
 			
-			$Body = '<a href="http://conversion.laneworks.net/' . $CSVFileName . '">CSV File</a><br />';
-			$Body .= '<a href="http://conversion.laneworks.net/' . $JSONFileName . '">JSON File</a><br />';
-			$Body .= '<a href="http://conversion.laneworks.net/' . $XMLFileName . '">XML File</a><br />';
-	 		 
-			$mail->From       = "conversion@kinlane.com";
-			$mail->FromName   = "Conversion - Complete";
-			$mail->Subject    = "The Excel File Has Been Converted";
-			$mail->MsgHTML($Body);
-			 
-				//$mail->AddReplyTo("reply@email.com","reply name");//they answer here, optional
-			$mail->AddAddress($From_Email,$From_Name);
-			$mail->IsHTML(true); // send as HTML
-			 
-			if(!$mail->Send()) {//to see if we return a message or a value bolean
-			  echo "Mailer Error: " . $mail->ErrorInfo;
-			} else  echo "Message sent!";		
+			sendEmail($Master_Email,$Master_Password,$To_Email,$To_Name,$Master_Email,$From_Name,$Subject,$Body);	
 	
 	        if($count++ >= $max_emails) break;
     	}
